@@ -54,45 +54,38 @@ public:
 
     void detectSuspuciousActivity()
     {
-        // for (auto ppid_iterator = m_detector_event_map.begin();ppid_iterator!=m_detector_event_map.end();/*dont need to increase it due to erase call*/)
-        // {
-        //     if (ppid_iterator->second.size()<5)
-        //     {
-        //         m_detector_event_map.erase(ppid_iterator);
-        //     }
-        //     else 
-        //     {
-        //         ++ppid_iterator;
-        //     }
-        // }
         std::erase_if(m_detector_event_map,[](const auto& pair)
         {
             return pair.second.size()<5;
         });
         for (auto& [ppid, pid_ts_pairs] : m_detector_event_map)
         {
-            std::sort(pid_ts_pairs.begin(), pid_ts_pairs.end(), [](const auto& pair_left, const auto& pair_right)
+            std::sort(pid_ts_pairs.begin(), pid_ts_pairs.end(),
+                [](const auto& pair_left, const auto& pair_right)
                 {
-                return pair_left.second< pair_right.second; 
+                    return pair_left.second< pair_right.second;
                 });
-            size_t left = 0 ;
-            size_t pids_count = pid_ts_pairs.size();
-            for (size_t right=0; right<pid_ts_pairs.size();++right)
+            size_t left = 0;
+            for (size_t right=0; right<pid_ts_pairs.size(); ++right)
             {
-                while (pid_ts_pairs[right].second - pid_ts_pairs[left].second> std::chrono::seconds(10))
+                while ((left < right) && ((pid_ts_pairs[right].second - pid_ts_pairs[left].second > std::chrono::seconds(10))))
                 {
                     ++left;
-                    --pids_count;
                 }
-                if (pids_count>=5)
+                if (right-left+1>=5)
                 {
-                    std::unique_ptr<ProcessAlert> p_alert = std::make_unique<ProcessAlert>();
-                    p_alert->m_type = ALERT_TYPE::SuspicioutActivityAlert;
-                    p_alert->m_pid = ppid;
-                    p_alert->m_period_start = pid_ts_pairs[left].second;
-                    p_alert->m_period_end = pid_ts_pairs[right].second;
-                    for (;left<right;++left, p_alert->m_pids.push_back(pid_ts_pairs[left].first));
-                    m_buffer_alert->push(std::move(p_alert));
+                    auto alert=std::make_unique<ProcessAlert>();
+                    alert->m_type=ALERT_TYPE::SuspicioutActivityAlert;
+                    alert->m_pid=ppid;
+                    alert->m_period_start=pid_ts_pairs[left].second;
+                    alert->m_period_end=pid_ts_pairs[right].second;
+                    alert->m_pids.reserve(right - left + 1);
+                    for (size_t i = left; i <= right; ++i)
+                    {
+                        alert->m_pids.push_back(pid_ts_pairs[i].first);
+                    }
+                    m_buffer_alert->push(std::move(alert));
+                    break;
                 }
             }
         }
