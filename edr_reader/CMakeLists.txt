@@ -35,7 +35,7 @@ target_link_libraries(edr_agent PRIVATE
 )
 
 add_executable(edr_unit_test unit_tests_main.cpp)
-target_link_libraries(edr_unit_test PRIVATE  Catch2::Catch2WithMain)
+target_link_libraries(edr_unit_test PRIVATE  Catch2::Catch2WithMain nlohmann_json::nlohmann_json)
 
 add_executable(edr_listener listener_main.cpp)
 target_link_libraries(edr_listener PRIVATE

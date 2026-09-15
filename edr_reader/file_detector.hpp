@@ -1,7 +1,13 @@
 #pragma once
 
+#include <algorithm>
+#include <cstdint>
 #include <string>
 #include <thread>
+#include <unordered_map>
+#include <utility>
+#include <vector>
+
 #include "alerts.hpp"
 #include "nlohmann/json.hpp"
 #include "ring_buffer.hpp"
@@ -24,10 +30,14 @@ public:
     {
         m_buffer_alert = buf;
     };
+    void addProcessEvent(std::uint32_t ppid, std::uint32_t pid, std::int64_t ts_seconds)
+    {
+        TTimePoint t { std::chrono::duration_cast<TTimePoint::duration>( std::chrono::seconds(ts_seconds)) };
+        m_detector_event_map[ppid].push_back( std::pair{pid, t});
+    }
     void parseItemFromStringToJSON()
     {
         auto item = m_buffer_ptr->pop();
-        //std::cout<<item<<'\n';
         nlohmann::json json_item;
         try 
         {

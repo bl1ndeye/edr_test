@@ -1,8 +1,10 @@
 #define CATCH_CONFIG_MAIN 
 #include <catch2/catch_test_macros.hpp>
 #include <atomic>
+#include <memory>
 #include <thread>
 #include "ring_buffer.hpp"
+#include "file_detector.hpp"
 
 TEST_CASE("Items are added", "[buffer]") {
     BufferRingThreadSafe<std::string> buffer;
@@ -56,6 +58,81 @@ TEST_CASE("Pop returns sentinel when buffer is closed and drained", "[buffer]") 
 
     buffer.close();
     REQUIRE(buffer.pop().empty());  // closed + empty -> sentinel
+}
+
+TEST_CASE("Detection: >=5 processes from same ppid within 10s triggers alert", "[detector]") {
+    EventDetector detector;
+    auto alerts = std::make_shared<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>>(80);
+    detector.setBufferAleft(alerts);
+
+    detector.addProcessEvent(100, 1, 1000);
+    detector.addProcessEvent(100, 2, 1001);
+    detector.addProcessEvent(100, 3, 1002);
+    detector.addProcessEvent(100, 4, 1003);
+    detector.addProcessEvent(100, 5, 1004);
+
+    detector.detectSuspuciousActivity();
+
+    REQUIRE(alerts->size() == 1);
+    auto alert = alerts->pop();
+    auto* process_alert = dynamic_cast<ProcessAlert*>(alert.get());
+    REQUIRE(process_alert != nullptr);
+    REQUIRE(process_alert->m_pid == 100);
+    REQUIRE(process_alert->m_pids == std::vector<std::uint32_t>{1, 2, 3, 4, 5});
+}
+
+TEST_CASE("Detection: fewer than 5 processes -> no alert", "[detector]") {
+    EventDetector detector;
+    auto alerts = std::make_shared<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>>(80);
+    detector.setBufferAleft(alerts);
+
+    detector.addProcessEvent(100, 1, 1000);
+    detector.addProcessEvent(100, 2, 1001);
+    detector.addProcessEvent(100, 3, 1002);
+    detector.addProcessEvent(100, 4, 1003);
+
+    detector.detectSuspuciousActivity();
+
+    REQUIRE(alerts->size() == 0);
+}
+
+TEST_CASE("Detection: 5 processes spread over >10s -> no alert", "[detector]") {
+    EventDetector detector;
+    auto alerts = std::make_shared<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>>(80);
+    detector.setBufferAleft(alerts);
+
+    detector.addProcessEvent(100, 1, 0);
+    detector.addProcessEvent(100, 2, 60);
+    detector.addProcessEvent(100, 3, 120);
+    detector.addProcessEvent(100, 4, 180);
+    detector.addProcessEvent(100, 5, 240);
+
+    detector.detectSuspuciousActivity();
+
+    REQUIRE(alerts->size() == 0);
+}
+
+TEST_CASE("Detection: only the offending ppid triggers among several", "[detector]") {
+    EventDetector detector;
+    auto alerts = std::make_shared<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>>(80);
+    detector.setBufferAleft(alerts);
+
+    for (std::int64_t i = 0; i < 5; ++i)
+    {
+        detector.addProcessEvent(200, static_cast<std::uint32_t>(1000 + i), 1000 + i);
+    }
+    for (std::int64_t i = 0; i < 3; ++i)
+    {
+        detector.addProcessEvent(300, static_cast<std::uint32_t>(2000 + i), 2000 + i);
+    }
+
+    detector.detectSuspuciousActivity();
+
+    REQUIRE(alerts->size() == 1);
+    auto alert = alerts->pop();
+    auto* process_alert = dynamic_cast<ProcessAlert*>(alert.get());
+    REQUIRE(process_alert != nullptr);
+    REQUIRE(process_alert->m_pid == 200);
 }
 
 
