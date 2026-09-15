@@ -40,10 +40,8 @@ class FileEstimator
                         {
                             if (fs::is_regular_file(entry.status())) 
                             {
-                                auto file_name = entry.path().string();
-                                // TODO change to hex of file
-                                std::string hex_str = get_file_hash(file_name);
-                                new_manifest.emplace(file_name, hex_str);
+                                std::string hex_str = get_file_hash(entry.path().string());
+                                new_manifest.emplace(normalized_full_path(entry.path()), hex_str);
                             }
                         }
                     //std::cout<< new_manifest.dump(4)<<std::endl;
@@ -98,7 +96,7 @@ class FileEstimator
     // evaluate  map/unordered map effectiveness
     void estimateFilesWithManifest()
     {
-        populateMapFromManifestJSON(m_baseline_manifest, m_parsed_manifest);
+        populateMapFromManifestJSON(m_baseline_manifest);
         // i dunno, probably could be tested on large datasets
         // what if remove and rebalance of map will affect 
         // posivitely due to faster find call
@@ -143,8 +141,8 @@ class FileEstimator
             {
                 if (fs::is_regular_file(entry.status())) 
                 {
-                    auto cur_file_name = entry.path().string();
-                    std::string cur_hex_str = get_file_hash(cur_file_name);
+                    auto cur_file_name = normalized_full_path(entry.path());
+                    std::string cur_hex_str = get_file_hash(entry.path().string());
                     auto find_iterator = tmp_map_manifest.find(cur_file_name);
                     if (find_iterator!=tmp_map_manifest.end())
                     {
@@ -175,14 +173,23 @@ class FileEstimator
         m_buffer_alert = buf;
     };
     private:
-    void populateMapFromManifestJSON(const nlohmann::json& manifest_json, std::map<std::string, std::string>& manifest_map)
+    void populateMapFromManifestJSON(const nlohmann::json& manifest_json)
     {
         for (const auto& el : manifest_json.items()) 
         {
-            m_parsed_manifest[el.key()] = el.value().get<std::string>();
+            m_parsed_manifest[normalized_full_path(el.key())] = el.value().get<std::string>();
         }
-        //error proof?
-        //manifest_map = manifest_json.get<std::map<std::string, std::string>>();
+    }
+    // Canonical full path: forward slashes + upper-cased drive letter, so
+    // manifest keys and scanned paths compare equal regardless of separator/case.
+    std::string normalized_full_path(const fs::path& p)
+    {
+        std::string s = fs::absolute(p).lexically_normal().generic_string();
+        if (s.size() >= 2 && s[1] == ':' && s[0] >= 'a' && s[0] <= 'z')
+        {
+            s[0] = static_cast<char>(s[0] - 'a' + 'A');
+        }
+        return s;
     }
     std::string get_file_hash(const std::string& filepath) 
     {

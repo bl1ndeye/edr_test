@@ -20,7 +20,10 @@ int main(int argc, char** argv) {
     desc.add_options()
         ("help", "produce help message")
         ("host,-h", po::value<std::string>(), "set host to send report")
-        ("port,-p", po::value<std::string>(), "set port for host to send report");
+        ("port,-p", po::value<std::string>(), "set port for host to send report")
+        ("events,-e", po::value<std::string>(), "path to events log file")
+        ("manifest,-m", po::value<std::string>(), "path to baseline manifest")
+        ("dir,-d", po::value<std::string>(), "path to directory to scan");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -38,8 +41,17 @@ int main(int argc, char** argv) {
 
     const std::string host = vm["host"].as<std::string>();
     const std::string port = vm["port"].as<std::string>();
+    const std::string events_path = vm["events"].empty()
+        ? std::string("process_events.txt")
+        : vm["events"].as<std::string>();
+    const std::string manifest_path = vm["manifest"].empty()
+        ? std::string("manifest_test.json")
+        : vm["manifest"].as<std::string>();
+    const std::string directory_path = vm["dir"].empty()
+        ? std::string("test_dir")
+        : vm["dir"].as<std::string>();
 
-    EventEnumerator event_enumerator {2 ,"d:/1eye/NCOT/edr_test/process_events.txt"};
+    EventEnumerator event_enumerator {2, events_path};
     std::shared_ptr<BufferRingThreadSafe<std::string>> event_buffer = std::make_shared<BufferRingThreadSafe<std::string>>(20);
     std::shared_ptr<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>> alert_buffer = std::make_shared<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>> (80);
 
@@ -47,7 +59,7 @@ int main(int argc, char** argv) {
     EventDetector event_detector;
     event_detector.setBuffer(event_buffer);
     event_detector.setBufferAleft(alert_buffer);
-    FileEstimator file_estimator{ "d:/1eye/NCOT/edr_test/manifest_test.json", "d:/1eye/NCOT/edr_test/test_dir" };
+    FileEstimator file_estimator{ manifest_path, directory_path };
     file_estimator.setBufferAleft(alert_buffer);
     file_estimator.parseManifestFile();
 
@@ -59,52 +71,30 @@ int main(int argc, char** argv) {
         {
             event_enumerator.startEnumeration();
         }};
-        std::jthread thread_detector {[&]()
-        {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            event_detector.start();
-        }};
         std::jthread thread_file_estimator{ [&]()
         {
             file_estimator.estimateFilesWithManifest();
         } };
+        std::jthread thread_detector {[&]()
+        {
+            event_detector.start();
+        }};
         std::jthread thread_collector{[&]()
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
             alert_collector.start();
         }};
+
+        // Producers of event_buffer finish -> close it so the detector drains and exits.
+        thread_enum.join();
+        event_buffer->close();
+
+        // Both detector and estimator produce alerts; wait for them, then close alert_buffer.
+        thread_detector.join();
+        thread_file_estimator.join();
+        alert_buffer->close();
+
+        // Collector drains remaining alerts and exits.
+        thread_collector.join();
     }
-    // event_enumerator.setBuffer(event_buffer);
-    // event_enumerator.startEnumeration();
-    // while (event_buffer->hasElements())
-    // {
-    //     std::cout<<event_buffer->pop()<<std::endl;
-    // }
-
-
-    
-     //file_estimator.createNewManifest("d:/1eye/NCOT/edr_test/test_dir",
-     //    "d:/1eye/NCOT/edr_test/manifest_test.json");
-
-    // ProcessAlert p_alert;
-    // p_alert.m_type = ALERT_TYPE::SuspicioutActivityAlert;
-    // p_alert.m_pid = "777";
-    // p_alert.m_pids.push_back("778");
-    // p_alert.m_pids.push_back("779");
-    // p_alert.m_pids.push_back("780");
-    // p_alert.m_pids.push_back("781");
-    // p_alert.m_pids.push_back("782");
-    // p_alert.m_period_start = std::chrono::system_clock::now()-std::chrono::seconds(10);
-    // p_alert.m_period_end = std::chrono::system_clock::now();
-    // std::cout<< p_alert.toJSON()<<'\n';
-    // std::cout<< p_alert.toString()<<'\n';
-
-    // FileAlert f_alert;
-    // f_alert.m_type = ALERT_TYPE::FileAdded;
-    // f_alert.m_file_name= "some_file_name.txt";
-    // std::cout<< f_alert.toJSON()<<'\n';
-    // std::cout<< f_alert.toString()<<'\n';
-    //std::cout<<alert_buffer->pop()->toJSON()<<'\n';
-    //std::cout<<alert_buffer->size()<<'\n';
     return 0;
 }

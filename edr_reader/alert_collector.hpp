@@ -74,13 +74,12 @@ public:
                 }
             };
 
-            while (m_buffer_ptr->hasElements())
+            while (true)
             {
                 auto alert = m_buffer_ptr->pop();
-                if (alert) send_alert(std::move(alert));
+                if (!alert) break;
+                send_alert(std::move(alert));
             }
-            auto tail = m_buffer_ptr->pop();
-            if (tail) send_alert(std::move(tail));
         }
         catch (const std::exception& e)
         {

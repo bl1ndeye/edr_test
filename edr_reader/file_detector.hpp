@@ -97,24 +97,46 @@ public:
             m_inner_parsed_buffer.resize(20);
             auto parseItemsFromStringBuffer = [&] ()
             {
-                while (m_buffer_ptr->hasElements()) 
+                while (true)
                 {
-                    parseItemFromStringToJSON();
+                    auto item = m_buffer_ptr->pop();
+                    if (item.empty())
+                    {
+                        break;
+                    }
+                    nlohmann::json json_item;
+                    try
+                    {
+                        json_item = nlohmann::json::parse(item);
+                        if (json_item["type"] == "ProcessStarted")
+                        {
+                            m_inner_parsed_buffer.push(json_item);
+                        }
+                    }
+                    catch (const nlohmann::json::parse_error& e)
+                    {
+                        std::cerr << "EventDetector JSON parse error: " << e.what() << '\n';
+                    }
                 }
+                m_inner_parsed_buffer.close();
             };
             auto parseAndValidateFormat = [&] ()
             {
-                while (m_inner_parsed_buffer.hasElements() or m_buffer_ptr->hasElements()) 
+                while (true)
                 {
-                    if (!m_inner_parsed_buffer.hasElements())
+                    auto current_element = m_inner_parsed_buffer.pop();
+                    if (current_element.is_null())
                     {
-                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                        continue;
+                        break;
                     }
-                    parseAndValidateEventFormat();
+                    uint32_t current_ppid = current_element["ppid"];
+                    uint32_t current_pid = current_element["pid"];
+                    auto raw_timestamp = current_element["ts"];
+                    TTimePoint current_time { std::chrono::duration_cast<TTimePoint::duration>( std::chrono::seconds(raw_timestamp))};
+                    m_detector_event_map[current_ppid].push_back( std::pair{current_pid,current_time});
                 }
             };
-            
+
             {
                 std::jthread thread_parse_string {parseItemsFromStringBuffer};
                 std::jthread thread_validate_json {parseAndValidateFormat};

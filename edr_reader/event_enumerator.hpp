@@ -61,7 +61,10 @@ private:
         std::string event_line;
         while (std::getline(file,event_line) && file.tellg()!=-1 && (file.tellg()<=chunk_info.m_chunk_end)  )
         {
-            m_buffer_ptr->push(event_line);
+            if (!m_buffer_ptr->push(event_line))
+            {
+                break;
+            }
         }
     }
     // by default , read whole file

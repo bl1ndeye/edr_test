@@ -1,12 +1,9 @@
 #pragma once
 
 #include <condition_variable>
-#include <chrono>
 #include <iostream>
 #include <mutex>
 #include <vector>
-
-static constexpr auto TIMEOUT_DURATION = std::chrono::seconds{10};
 
 template<typename TItem>
 class BufferRingThreadSafe
@@ -17,31 +14,30 @@ class BufferRingThreadSafe
     {
     }
 
-    void push(TItem item)
+    bool push(TItem item)
     {
         std::unique_lock<std::mutex> ul {mutex_};
-        bool ready_to_push = cv_full_.wait_for(ul,TIMEOUT_DURATION ,[this]() {
-            return this->count_ < this->capacity_;
+        cv_full_.wait(ul, [this]() {
+            return this->closed_ || this->count_ < this->capacity_;
         });
-        if (!ready_to_push)
+        if (closed_)
         {
-            std::cerr<<"BufferRingThreadSafe::push timeouted"<<std::endl;
-            return;
+            return false;
         }
         items_[tail_index_]= std::move(item);
         tail_index_ = (tail_index_ + 1) % capacity_;
         ++count_;
         cv_empty_.notify_one();
+        return true;
     }
     TItem pop()
     {
         std::unique_lock<std::mutex> ul {mutex_};
-        bool ready_to_pop = cv_empty_.wait_for(ul, TIMEOUT_DURATION, [this]() {
-            return this->count_>0;
+        cv_empty_.wait(ul, [this]() {
+            return this->closed_ || this->count_ > 0;
         });
-        if (!ready_to_pop)
+        if (count_ == 0)
         {
-            std::cerr<<"BufferRingThreadSafe::pop timeouted"<<std::endl;
             return TItem{};
         }
         TItem pop_item = std::move(items_[head_index_]);
@@ -50,21 +46,44 @@ class BufferRingThreadSafe
         cv_full_.notify_one();
         return pop_item;
     }
-    bool hasElements(){return count_>0;}
-    std::size_t size() const { return count_;}
-    void resize(std::size_t new_size) 
+    void close()
     {
-        items_.resize(new_size); 
+        std::lock_guard<std::mutex> lg {mutex_};
+        closed_ = true;
+        cv_empty_.notify_all();
+        cv_full_.notify_all();
+    }
+    bool isClosed() const
+    {
+        std::lock_guard<std::mutex> lg {mutex_};
+        return closed_;
+    }
+    bool hasElements()
+    {
+        std::lock_guard<std::mutex> lg {mutex_};
+        return count_>0;
+    }
+    std::size_t size()
+    {
+        std::lock_guard<std::mutex> lg {mutex_};
+        return count_;
+    }
+    void resize(std::size_t new_size)
+    {
+        std::lock_guard<std::mutex> lg {mutex_};
+        items_.resize(new_size);
         capacity_ = new_size;
     }
+
     private:
     std::vector<TItem> items_;
     std::size_t  capacity_ = 10;
     std::size_t count_ = 0 ;
     std::size_t head_index_=0;
     std::size_t tail_index_=0;
+    bool closed_ = false;
 
-    std::mutex mutex_;
+    mutable std::mutex mutex_;
     std::condition_variable cv_full_;
     std::condition_variable cv_empty_;
 };
