@@ -10,7 +10,7 @@
 #include "event_enumerator.hpp"
 #include "file_detector.hpp"
 #include "file_estimator.hpp"
-#include "alerts.hpp"
+#include "alert_collector.hpp"
 #include <boost/program_options.hpp>
 
 namespace po = boost::program_options;
@@ -36,6 +36,9 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
+    const std::string host = vm["host"].as<std::string>();
+    const std::string port = vm["port"].as<std::string>();
+
     EventEnumerator event_enumerator {2 ,"d:/1eye/NCOT/edr_test/process_events.txt"};
     std::shared_ptr<BufferRingThreadSafe<std::string>> event_buffer = std::make_shared<BufferRingThreadSafe<std::string>>(20);
     std::shared_ptr<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>> alert_buffer = std::make_shared<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>> (80);
@@ -47,6 +50,10 @@ int main(int argc, char** argv) {
     FileEstimator file_estimator{ "d:/1eye/NCOT/edr_test/manifest_test.json", "d:/1eye/NCOT/edr_test/test_dir" };
     file_estimator.setBufferAleft(alert_buffer);
     file_estimator.parseManifestFile();
+
+    AlertCollector alert_collector{host, port};
+    alert_collector.setBuffer(alert_buffer);
+
     {
         std::jthread thread_enum {[&]()
         {
@@ -61,7 +68,11 @@ int main(int argc, char** argv) {
         {
             file_estimator.estimateFilesWithManifest();
         } };
-
+        std::jthread thread_collector{[&]()
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            alert_collector.start();
+        }};
     }
     // event_enumerator.setBuffer(event_buffer);
     // event_enumerator.startEnumeration();
@@ -93,7 +104,7 @@ int main(int argc, char** argv) {
     // f_alert.m_file_name= "some_file_name.txt";
     // std::cout<< f_alert.toJSON()<<'\n';
     // std::cout<< f_alert.toString()<<'\n';
-    std::cout<<alert_buffer->pop()->toJSON()<<'\n';
-    std::cout<<alert_buffer->size()<<'\n';
+    //std::cout<<alert_buffer->pop()->toJSON()<<'\n';
+    //std::cout<<alert_buffer->size()<<'\n';
     return 0;
 }

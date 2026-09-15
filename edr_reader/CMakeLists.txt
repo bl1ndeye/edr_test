@@ -24,16 +24,22 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Catch2)
 
-find_package(boost_program_options REQUIRED CONFIG)
-find_package(boost_asio REQUIRED CONFIG)
+find_package(Boost REQUIRED CONFIG COMPONENTS program_options)
 
 add_executable(edr_agent main.cpp)
 target_link_libraries(edr_agent PRIVATE
     picosha2
     nlohmann_json::nlohmann_json
     Boost::program_options
-    Boost::asio
+    Boost::headers
 )
 
 add_executable(edr_unit_test unit_tests_main.cpp)
 target_link_libraries(edr_unit_test PRIVATE  Catch2::Catch2WithMain)
+
+add_executable(edr_listener listener_main.cpp)
+target_link_libraries(edr_listener PRIVATE
+    Boost::headers
+    Boost::program_options
+    nlohmann_json::nlohmann_json
+)

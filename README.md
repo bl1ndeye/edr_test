@@ -16,7 +16,7 @@ create file analyzer +
 
 create alerts classes +
 
-create collector for alerts 
+create collector for alerts +
 
-create some sort of backend listener to receive alerts by tcp protocol
+create some sort of backend listener to receive alerts by tcp protocol +
 

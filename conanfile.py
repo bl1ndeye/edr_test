@@ -9,8 +9,11 @@ class EDRConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
 
     def requirements(self):
-        self.requires("boost-program-options/1.83.0")
-        self.requires("boost-asio/1.83.0")
+        self.requires("boost/1.83.0")
+
+    def configure(self):
+        self.options["boost"].without_program_options = False
+        self.options["boost"].without_asio = False
 
     def generate(self):
         tc = CMakeToolchain(self)
