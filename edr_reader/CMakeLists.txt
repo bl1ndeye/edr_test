@@ -13,7 +13,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(picosha2)
 
 FetchContent_Declare(
-    json  
+    json
     URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz)
 FetchContent_MakeAvailable(json)
 
@@ -24,8 +24,16 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Catch2)
 
+find_package(boost_program_options REQUIRED CONFIG)
+find_package(boost_asio REQUIRED CONFIG)
+
 add_executable(edr_agent main.cpp)
-target_link_libraries(edr_agent PRIVATE picosha2 nlohmann_json::nlohmann_json)
+target_link_libraries(edr_agent PRIVATE
+    picosha2
+    nlohmann_json::nlohmann_json
+    Boost::program_options
+    Boost::asio
+)
 
 add_executable(edr_unit_test unit_tests_main.cpp)
 target_link_libraries(edr_unit_test PRIVATE  Catch2::Catch2WithMain)

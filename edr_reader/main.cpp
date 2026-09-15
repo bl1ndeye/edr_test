@@ -11,9 +11,31 @@
 #include "file_detector.hpp"
 #include "file_estimator.hpp"
 #include "alerts.hpp"
+#include <boost/program_options.hpp>
 
+namespace po = boost::program_options;
 
-int main() {   
+int main(int argc, char** argv) {
+    po::options_description desc("EDR APP options");
+    desc.add_options()
+        ("help", "produce help message")
+        ("host,-h", po::value<std::string>(), "set host to send report")
+        ("port,-p", po::value<std::string>(), "set port for host to send report");
+
+    po::variables_map vm;
+    po::store(po::parse_command_line(argc, argv, desc), vm);
+    po::notify(vm);
+
+    if (vm.count("help")) {
+        std::cout << desc << "\n";
+        return 1;
+    }
+    if (vm["host"].empty() || vm["port"].empty())
+    {
+        std::cout << "Both host and port should be specified" << std::endl;
+        return EXIT_FAILURE;
+    }
+
     EventEnumerator event_enumerator {2 ,"d:/1eye/NCOT/edr_test/process_events.txt"};
     std::shared_ptr<BufferRingThreadSafe<std::string>> event_buffer = std::make_shared<BufferRingThreadSafe<std::string>>(20);
     std::shared_ptr<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>> alert_buffer = std::make_shared<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>> (80);
