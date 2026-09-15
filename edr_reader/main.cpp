@@ -14,14 +14,17 @@
 
 
 int main() {   
-    EventEnumerator event_enumerator {2 ,"/home/zima/work/tests_app/process_events.txt"};
+    EventEnumerator event_enumerator {2 ,"d:/1eye/NCOT/edr_test/process_events.txt"};
     std::shared_ptr<BufferRingThreadSafe<std::string>> event_buffer = std::make_shared<BufferRingThreadSafe<std::string>>(20);
-    std::shared_ptr<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>> alert_buffer = std::make_shared<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>> (20);
+    std::shared_ptr<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>> alert_buffer = std::make_shared<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>> (80);
 
     event_enumerator.setBuffer(event_buffer);
     EventDetector event_detector;
     event_detector.setBuffer(event_buffer);
     event_detector.setBufferAleft(alert_buffer);
+    FileEstimator file_estimator{ "d:/1eye/NCOT/edr_test/manifest_test.json", "d:/1eye/NCOT/edr_test/test_dir" };
+    file_estimator.setBufferAleft(alert_buffer);
+    file_estimator.parseManifestFile();
     {
         std::jthread thread_enum {[&]()
         {
@@ -32,6 +35,11 @@ int main() {
             std::this_thread::sleep_for(std::chrono::seconds(1));
             event_detector.start();
         }};
+        std::jthread thread_file_estimator{ [&]()
+        {
+            file_estimator.estimateFilesWithManifest();
+        } };
+
     }
     // event_enumerator.setBuffer(event_buffer);
     // event_enumerator.startEnumeration();
@@ -40,13 +48,10 @@ int main() {
     //     std::cout<<event_buffer->pop()<<std::endl;
     // }
 
-    // FileEstimator file_estimator {"/home/zima/work/tests_app/manifest_test.json", "/home/zima/work/tests_app/test_dir"};
 
-    // file_estimator.parseManifestFile();
-    // auto estimation_vector = file_estimator.estimateFilesWithManifest();
     
-    // file_estimator.createNewManifest("/home/zima/work/tests_app/test_dir", 
-    //     "/home/zima/work/tests_app/manifest_test.json");
+     //file_estimator.createNewManifest("d:/1eye/NCOT/edr_test/test_dir",
+     //    "d:/1eye/NCOT/edr_test/manifest_test.json");
 
     // ProcessAlert p_alert;
     // p_alert.m_type = ALERT_TYPE::SuspicioutActivityAlert;

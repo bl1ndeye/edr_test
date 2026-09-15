@@ -27,7 +27,7 @@ public:
     void parseItemFromStringToJSON()
     {
         auto item = m_buffer_ptr->pop();
-        std::cout<<item<<'\n';
+        //std::cout<<item<<'\n';
         nlohmann::json json_item;
         try 
         {

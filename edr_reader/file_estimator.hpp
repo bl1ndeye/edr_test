@@ -96,7 +96,7 @@ class FileEstimator
         file.close();
     }
     // evaluate  map/unordered map effectiveness
-    void estimateFilesWithManifest(BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>& buffer)
+    void estimateFilesWithManifest()
     {
         populateMapFromManifestJSON(m_baseline_manifest, m_parsed_manifest);
         // i dunno, probably could be tested on large datasets
@@ -116,7 +116,7 @@ class FileEstimator
         //     FILE_CHANGED    = 7,
         //     FILE_DELETED    = 13
         // };
-        auto add_estimation_item = [&buffer](const std::string& filename, ALERT_TYPE type )
+        auto add_estimation_item = [&](const std::string& filename, ALERT_TYPE type )
         {
             // std::string item_text;
             // switch (type) 
@@ -137,14 +137,13 @@ class FileEstimator
             std::unique_ptr<FileAlert> p_alert =std::make_unique<FileAlert>() ;
             p_alert->m_type = type;
             p_alert->m_file_name= filename;
-            buffer.push(std::move(p_alert));
+            m_buffer_alert->push(std::move(p_alert));
         };
         for (const auto& entry : fs::recursive_directory_iterator(m_directory_path)) 
             {
                 if (fs::is_regular_file(entry.status())) 
                 {
                     auto cur_file_name = entry.path().string();
-                    // TODO change to hex of file
                     std::string cur_hex_str = get_file_hash(cur_file_name);
                     auto find_iterator = tmp_map_manifest.find(cur_file_name);
                     if (find_iterator!=tmp_map_manifest.end())
@@ -171,6 +170,10 @@ class FileEstimator
         }    
     }
 
+    void setBufferAleft(std::shared_ptr<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>>  buf)
+    {
+        m_buffer_alert = buf;
+    };
     private:
     void populateMapFromManifestJSON(const nlohmann::json& manifest_json, std::map<std::string, std::string>& manifest_map)
     {
@@ -212,4 +215,7 @@ class FileEstimator
     nlohmann::json m_baseline_manifest;
     // filename:sha hash to speed up search
     std::map<std::string, std::string> m_parsed_manifest;
+    // for alerts objects
+    std::shared_ptr<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>> m_buffer_alert;
+
 };

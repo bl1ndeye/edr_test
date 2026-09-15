@@ -61,8 +61,8 @@ class BufferRingThreadSafe
     std::vector<TItem> items_;
     std::size_t  capacity_ = 10;
     std::size_t count_ = 0 ;
-    std::size_t head_index_;
-    std::size_t tail_index_;
+    std::size_t head_index_=0;
+    std::size_t tail_index_=0;
 
     std::mutex mutex_;
     std::condition_variable cv_full_;
