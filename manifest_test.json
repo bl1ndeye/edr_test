@@ -1,0 +1,18 @@
+{
+    "/home/zima/work/tests_app/test_dir/CMakeLists.txt": "be3a9af214e66d3a1027dbfd4ef57b22249e3326ce30656df6f5e4952e1a308a",
+    "/home/zima/work/tests_app/test_dir/dir/Makefile": "f012f2b085011532509621edcd258845db9e374c2552ae78cf0d9579031795ba",
+    "/home/zima/work/tests_app/test_dir/dir/compile_commands.json": "8a50d28dd99e521af9192f34ff9288406b80149e434c97a913db29db08279b25",
+    "/home/zima/work/tests_app/test_dir/dir/dir_nested/CMakeDirectoryInformation.cmake": "9de4b64d2a3e529ea797a8794f43e9472d39c7da0eefc145d59517fa742fad99",
+    "/home/zima/work/tests_app/test_dir/dir/dir_nested/InstallScripts.json": "da7bef82216560fa95b300e93ade4c440bcc923e1218bebf21adc0ed3de2df30",
+    "/home/zima/work/tests_app/test_dir/dir/dir_nested/Makefile.cmake": "9d362593412749b082a34b1910d47b6dbaad23d2ea0886743ac07c1e7f2c646e",
+    "/home/zima/work/tests_app/test_dir/dir/dir_nested/Makefile2": "98809750e799a818e95b1d37b07cbc687bc8f7de16737d4787390d8fd0a7f658",
+    "/home/zima/work/tests_app/test_dir/dir/dir_nested/cmake.check_cache": "a26189e394421da57f45706a07713c5720acd200a41711b0c0c590c3c63371c4",
+    "/home/zima/work/tests_app/test_dir/dir/some_new_file": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/home/zima/work/tests_app/test_dir/main.cpp": "a3c2990d797204a069a4d4065e3349caba898b60f3b46ffd3308e1b990e75dff",
+    "/home/zima/work/tests_app/test_dir/other_dir/CMakeCXXCompilerId.cpp": "5b0cbdb2a0d0a5b91a89026321eb0202fdecb22328eb5c668566ce5cb17e3cd2",
+    "/home/zima/work/tests_app/test_dir/other_dir/CMakeSystem.cmake": "d4ab78dec65371debf381837e24ed1110bb190e0df942eaabe673de66cfd8b79",
+    "/home/zima/work/tests_app/test_dir/other_dir/DependInfo.cmake": "a14adf0dd8a46cd46254b73a6c25a35a9ca0e86cdfa1b3a940cfcae0aa876524",
+    "/home/zima/work/tests_app/test_dir/other_dir/cmake_clean.cmake": "7380d2584cd5d9098116cd7d48b81a36f7604c1e89e7a91c6daa17719dde1ae7",
+    "/home/zima/work/tests_app/test_dir/other_dir/compiler_depend.make": "6e0889abd15489d01251dd37a2e09b4e5a32f611c48d556d642c5de85df2cdd9",
+    "/home/zima/work/tests_app/test_dir/other_dir/compiler_depend.ts": "2fcdca6a1634331837fcff9beb6ebcb4123454dc3b8ec6b2e80463ad47f67a0b"
+}

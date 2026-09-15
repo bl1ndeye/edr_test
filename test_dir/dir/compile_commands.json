@@ -1,0 +1,8 @@
+[
+{
+  "directory": "/home/zima/work/tests_app/zenoh_ring_buffer/build",
+  "command": "/usr/bin/g++   -g -std=c++20 -o CMakeFiles/ZenohRingBuffer.dir/main.cpp.o -c /home/zima/work/tests_app/zenoh_ring_buffer/main.cpp",
+  "file": "/home/zima/work/tests_app/zenoh_ring_buffer/main.cpp",
+  "output": "CMakeFiles/ZenohRingBuffer.dir/main.cpp.o"
+}
+]

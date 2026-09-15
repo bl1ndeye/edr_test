@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/zima/work/tests_app/zenoh_ring_buffer/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

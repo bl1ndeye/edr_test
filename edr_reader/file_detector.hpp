@@ -1,0 +1,146 @@
+#pragma once
+
+#include <string>
+#include <thread>
+#include "alerts.hpp"
+#include "nlohmann/json.hpp"
+#include "ring_buffer.hpp"
+
+using TTimePoint = std::chrono::time_point<std::chrono::system_clock>;
+class EventDetector
+{
+public:
+    EventDetector() = default;
+
+    EventDetector(const EventDetector&) = delete;
+    EventDetector& operator=(const EventDetector&) = delete;
+    EventDetector(EventDetector&&) = default;
+    EventDetector& operator=(EventDetector&&) = default;
+    void setBuffer(std::shared_ptr<BufferRingThreadSafe<std::string>> buf)
+    {
+        m_buffer_ptr = buf;
+    };
+    void setBufferAleft(std::shared_ptr<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>>  buf)
+    {
+        m_buffer_alert = buf;
+    };
+    void parseItemFromStringToJSON()
+    {
+        auto item = m_buffer_ptr->pop();
+        std::cout<<item<<'\n';
+        nlohmann::json json_item;
+        try 
+        {
+            json_item = nlohmann::json::parse(item);
+            if (json_item["type"]== "ProcessStarted")
+            {
+                m_inner_parsed_buffer.push(json_item);
+            }
+        } catch (const nlohmann::json::parse_error& e) 
+        {
+            std::cerr << "EventDetector::parseItemFromStringToJSON JSON parse error: " << e.what() << '\n';
+        }
+    }
+    void parseAndValidateEventFormat()
+    {
+        auto current_element = m_inner_parsed_buffer.pop();
+        uint32_t current_ppid = current_element["ppid"];
+        uint32_t  current_pid = current_element["pid"];
+        //auto raw_timestamp = std::stoll(std::string{ current_element["ts"]});
+        auto raw_timestamp = current_element["ts"];
+        TTimePoint current_time { std::chrono::duration_cast<TTimePoint::duration>( std::chrono::seconds(raw_timestamp))};
+        m_detector_event_map[current_ppid].push_back( std::pair{current_pid,current_time});
+    }
+
+    void detectSuspuciousActivity()
+    {
+        // for (auto ppid_iterator = m_detector_event_map.begin();ppid_iterator!=m_detector_event_map.end();/*dont need to increase it due to erase call*/)
+        // {
+        //     if (ppid_iterator->second.size()<5)
+        //     {
+        //         m_detector_event_map.erase(ppid_iterator);
+        //     }
+        //     else 
+        //     {
+        //         ++ppid_iterator;
+        //     }
+        // }
+        std::erase_if(m_detector_event_map,[](const auto& pair)
+        {
+            return pair.second.size()<5;
+        });
+        for (auto& [ppid, pid_ts_pairs] : m_detector_event_map)
+        {
+            std::sort(pid_ts_pairs.begin(), pid_ts_pairs.end(), [](const auto& pair_left, const auto& pair_right)
+                {
+                return pair_left.second< pair_right.second; 
+                });
+            size_t left = 0 ;
+            size_t pids_count = pid_ts_pairs.size();
+            for (size_t right=0; right<pid_ts_pairs.size();++right)
+            {
+                while (pid_ts_pairs[right].second - pid_ts_pairs[left].second> std::chrono::seconds(10))
+                {
+                    ++left;
+                    --pids_count;
+                }
+                if (pids_count>=5)
+                {
+                    std::unique_ptr<ProcessAlert> p_alert = std::make_unique<ProcessAlert>();
+                    p_alert->m_type = ALERT_TYPE::SuspicioutActivityAlert;
+                    p_alert->m_pid = ppid;
+                    p_alert->m_period_start = pid_ts_pairs[left].second;
+                    p_alert->m_period_end = pid_ts_pairs[right].second;
+                    for (;left<right;++left, p_alert->m_pids.push_back(pid_ts_pairs[left].first));
+                    m_buffer_alert->push(std::move(p_alert));
+                }
+            }
+        }
+    }
+    void start()
+    {
+        if (m_buffer_ptr)
+        {
+            m_inner_parsed_buffer.resize(20);
+            auto parseItemsFromStringBuffer = [&] ()
+            {
+                while (m_buffer_ptr->hasElements()) 
+                {
+                    parseItemFromStringToJSON();
+                }
+            };
+            auto parseAndValidateFormat = [&] ()
+            {
+                while (m_inner_parsed_buffer.hasElements() or m_buffer_ptr->hasElements()) 
+                {
+                    if (!m_inner_parsed_buffer.hasElements())
+                    {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                        continue;
+                    }
+                    parseAndValidateEventFormat();
+                }
+            };
+            
+            {
+                std::jthread thread_parse_string {parseItemsFromStringBuffer};
+                std::jthread thread_validate_json {parseAndValidateFormat};
+            }
+            if (m_buffer_alert)
+            {
+                detectSuspuciousActivity();
+            }
+            else {
+            // TODO ACHTUNG something
+            }
+        }
+        else {
+        // TODO alert error or whatever
+        }
+    }
+private:
+    std::shared_ptr<BufferRingThreadSafe<std::string>> m_buffer_ptr;
+    std::shared_ptr<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>> m_buffer_alert;
+    BufferRingThreadSafe<nlohmann::json> m_inner_parsed_buffer;
+    std::unordered_map<uint32_t, std::vector<std::pair<uint32_t, TTimePoint>  >> m_detector_event_map;
+};
