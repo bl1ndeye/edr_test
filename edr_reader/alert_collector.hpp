@@ -6,6 +6,7 @@
 #include "alerts.hpp"
 #include "ring_buffer.hpp"
 
+// сборщик аллертов, отправляет все по тисипи в нужном формате
 class AlertCollector
 {
 public:

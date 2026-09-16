@@ -10,6 +10,9 @@
 #include "nlohmann/json.hpp"
 #include "ring_buffer.hpp"
 
+
+// сравнивает и создает бейс лайн манифесты , с SHA256 и проч
+// файл систем используется, так что гипотетически платформо независимо
 class FileEstimator
 {
 public:

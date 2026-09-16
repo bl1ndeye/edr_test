@@ -11,6 +11,8 @@
 #include "nlohmann/json.hpp"
 #include "ring_buffer.hpp"
 
+// анализирует полученный список строк событий
+// парсит в контейнер и детектирует по правилу
 class EventDetector
 {
 public:

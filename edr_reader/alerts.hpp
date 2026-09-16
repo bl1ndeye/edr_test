@@ -9,6 +9,8 @@
 
 using TTimePoint = std::chrono::time_point<std::chrono::system_clock>;
 
+// классы для алертов, задизайнено чтобы
+// можно было попроще добавлять новые, но в принципе не рокет саенс
 enum class ALERT_TYPE
 {
     SuspicioutActivityAlert = 1,

@@ -79,7 +79,7 @@ int main(int argc, char** argv) {
     const std::string directory_path = vm["dir"].empty()
         ? std::string("test_dir")
         : vm["dir"].as<std::string>();
-
+    // создание обьектов и 2 буфферов для обмена данными между обьектами (сервисами)
     EventEnumerator event_enumerator {2, events_path};
     std::shared_ptr<BufferRingThreadSafe<std::string>> event_buffer = std::make_shared<BufferRingThreadSafe<std::string>>(20);
     std::shared_ptr<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>> alert_buffer = std::make_shared<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>> (80);
@@ -106,6 +106,8 @@ int main(int argc, char** argv) {
     file_estimator.set_stop_token(app_stop_token);
 
     {
+        // параллельные потоки для сервисов чтобы имитировать 
+        // как будто одновременное работает несколько сервисов/процессов
         std::jthread thread_enum {[&]()
         {
             event_enumerator.startEnumeration();

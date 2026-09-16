@@ -9,6 +9,8 @@
 
 #include "ring_buffer.hpp"
 
+// многопоточное чтение файла
+// строки напихывает в буффер для последующей обработки детектором
 class EventEnumerator
 {
 public:
@@ -34,6 +36,10 @@ private:
     };
 
     void read_file_chunk(ThreadChunkPos chunk_info);
+    // высчитывает позиции кусков
+    // может быть вызван повторно
+    // чтобы пересчитать куски для чтения для добавленных строк в файл
+    // аля реальный файл журнала/ лога в который что-то пишется сторонним сервисом
     void calculateChunksPos(std::streampos section_start = 0);
 
     std::vector<ThreadChunkPos> m_chunks;
