@@ -23,6 +23,11 @@ void EventEnumerator::setBuffer(std::shared_ptr<BufferRingThreadSafe<std::string
     m_buffer_ptr = std::move(buf);
 }
 
+void EventEnumerator::set_stop_token(std::stop_token token)
+{
+    m_stop_token = std::move(token);
+}
+
 void EventEnumerator::startEnumeration()
 {
     assert(m_buffer_ptr != nullptr && "Create and provide buffer PTR");
@@ -47,6 +52,10 @@ void EventEnumerator::read_file_chunk(ThreadChunkPos chunk_info)
     std::string event_line;
     while (std::getline(file, event_line) && file.tellg() != -1 && (file.tellg() <= chunk_info.m_chunk_end))
     {
+        if (m_stop_token.stop_requested())
+        {
+            break;
+        }
         if (!m_buffer_ptr->push(event_line))
         {
             break;

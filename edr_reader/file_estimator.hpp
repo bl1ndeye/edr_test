@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <map>
 #include <memory>
+#include <stop_token>
 #include <string>
 
 #include "alerts.hpp"
@@ -25,6 +26,7 @@ public:
     void parseManifestFile();
     void estimateFilesWithManifest();
     void setBufferAleft(std::shared_ptr<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>> buf);
+    void set_stop_token(std::stop_token token);
 
 private:
     void populateMapFromManifestJSON(const nlohmann::json& manifest_json);
@@ -37,4 +39,5 @@ private:
     nlohmann::json m_baseline_manifest;
     std::map<std::string, std::string> m_parsed_manifest;
     std::shared_ptr<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>> m_buffer_alert;
+    std::stop_token m_stop_token;
 };

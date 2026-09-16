@@ -101,8 +101,14 @@ void FileEstimator::estimateFilesWithManifest()
         m_buffer_alert->push(std::move(p_alert));
     };
 
+    bool stopped = false;
     for (const auto& entry : fs::recursive_directory_iterator(m_directory_path))
     {
+        if (m_stop_token.stop_requested())
+        {
+            stopped = true;
+            break;
+        }
         if (fs::is_regular_file(entry.status()))
         {
             auto cur_file_name = normalized_full_path(entry.path());
@@ -126,15 +132,25 @@ void FileEstimator::estimateFilesWithManifest()
             }
         }
     }
-    for (const auto& item : tmp_map_manifest)
+    // On early stop we skip the deletion pass to avoid emitting false
+    // "removed" alerts for files that were simply never scanned.
+    if (!stopped)
     {
-        add_estimation_item(item.first, ALERT_TYPE::FileDeleted);
+        for (const auto& item : tmp_map_manifest)
+        {
+            add_estimation_item(item.first, ALERT_TYPE::FileDeleted);
+        }
     }
 }
 
 void FileEstimator::setBufferAleft(std::shared_ptr<BufferRingThreadSafe<std::unique_ptr<EDR_AlertBase>>> buf)
 {
     m_buffer_alert = std::move(buf);
+}
+
+void FileEstimator::set_stop_token(std::stop_token token)
+{
+    m_stop_token = std::move(token);
 }
 
 void FileEstimator::populateMapFromManifestJSON(const nlohmann::json& manifest_json)

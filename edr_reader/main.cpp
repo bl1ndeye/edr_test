@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <thread>
 #include <random>
+#include <stop_token>
 
 #include "event_enumerator.hpp"
 #include "file_detector.hpp"
@@ -13,7 +14,35 @@
 #include "alert_collector.hpp"
 #include <boost/program_options.hpp>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <csignal>
+#endif
+
 namespace po = boost::program_options;
+
+namespace
+{
+    std::stop_source g_app_stop_source;
+
+#ifdef _WIN32
+    BOOL WINAPI console_ctrl_handler(DWORD ctrl_type)
+    {
+        if (ctrl_type == CTRL_C_EVENT || ctrl_type == CTRL_BREAK_EVENT || ctrl_type == CTRL_CLOSE_EVENT)
+        {
+            g_app_stop_source.request_stop();
+            return TRUE;
+        }
+        return FALSE;
+    }
+#else
+    void signal_handler(int)
+    {
+        g_app_stop_source.request_stop();
+    }
+#endif
+}
 
 int main(int argc, char** argv) {
     po::options_description desc("EDR APP options");
@@ -65,6 +94,16 @@ int main(int argc, char** argv) {
 
     AlertCollector alert_collector{host, port};
     alert_collector.setBuffer(alert_buffer);
+
+#ifdef _WIN32
+    SetConsoleCtrlHandler(console_ctrl_handler, TRUE);
+#else
+    std::signal(SIGINT, signal_handler);
+    std::signal(SIGTERM, signal_handler);
+#endif
+    const std::stop_token app_stop_token = g_app_stop_source.get_token();
+    event_enumerator.set_stop_token(app_stop_token);
+    file_estimator.set_stop_token(app_stop_token);
 
     {
         std::jthread thread_enum {[&]()
